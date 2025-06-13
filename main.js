@@ -38,7 +38,7 @@ const discardBtn = document.getElementById("discard");
 
 // --- 初期化 ---
 function init() {
-  deck = shuffle([...cityCards, ...cityCards]); // 20枚くらいの山札
+  deck = shuffle([cityCards, cityCards, cityCards, cityCards,　cityCards, cityCards, cityCards, cityCards, cityCards, cityCards, cityCards, cityCards,　cityCards, cityCards, cityCards, cityCards, cityCards, cityCards, cityCards, cityCards,　cityCards, cityCards, cityCards, cityCards]); // 20枚くらいの山札
   discardPile = [];
   players.forEach(p => {
     p.hp = 50;
@@ -139,7 +139,7 @@ function useCard(cardIndex, targetIndex) {
 
     case "heal":
       player.hp += card.ability.value;
-      if (player.hp > 50) player.hp = 50;
+      if (player.hp > 75) player.hp = 75;
       infoEl.textContent = `プレイヤー${player.id}が【${card.name}】で${card.ability.value}回復！`;
       break;
 
@@ -152,7 +152,7 @@ function useCard(cardIndex, targetIndex) {
       applyDamage(target, card.ability.value);
       const heal = Math.floor(card.ability.value / 2);
       player.hp += heal;
-      if (player.hp > 50) player.hp = 50;
+      if (player.hp > 75) player.hp = 75;
       infoEl.textContent = `プレイヤー${player.id}が【${card.name}】でプレイヤー${target.id}に${card.ability.value}ダメージ、${heal}回復！`;
       break;
 
