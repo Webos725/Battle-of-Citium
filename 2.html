@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: 'Noto Sans JP', sans-serif; }
+    canvas { touch-action: none; border: 1px solid #ccc; background: white; }
   </style>
 </head>
 <body class="bg-gray-100 min-h-screen p-6">
@@ -17,6 +18,7 @@
     <div class="mb-4 flex gap-2">
       <input id="nameInput" type="text" placeholder="キャラ名" class="flex-1 p-2 rounded border border-gray-300" />
       <button onclick="addCharacter()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">追加</button>
+      <button onclick="clearData()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">全削除</button>
     </div>
 
     <!-- ランキング -->
@@ -26,9 +28,8 @@
     </div>
 
     <!-- ショップ -->
-    <div class="bg-white shadow rounded p-4">
+    <div class="bg-white shadow rounded p-4 mb-6">
       <h2 class="text-xl font-semibold mb-2">ショップ</h2>
-
       <div class="flex gap-2 mb-2">
         <input id="itemName" placeholder="商品名" class="flex-1 p-2 border rounded" />
         <input id="itemPrice" type="number" placeholder="価格" class="w-24 p-2 border rounded" />
@@ -36,6 +37,13 @@
         <button onclick="addItem()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">出品</button>
       </div>
       <ul id="shopList" class="space-y-1"></ul>
+    </div>
+
+    <!-- ホワイトボード -->
+    <div class="bg-white shadow rounded p-4">
+      <h2 class="text-xl font-semibold mb-2">ホワイトボード</h2>
+      <canvas id="board" width="600" height="400" class="w-full rounded mb-2"></canvas>
+      <button onclick="clearBoard()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">ホワイトボード消去</button>
     </div>
   </div>
 
@@ -75,6 +83,14 @@
       save(data);
     }
 
+    function clearData() {
+      if (confirm('本当に全データを削除しますか？')) {
+        localStorage.removeItem('hirocoins');
+        localStorage.removeItem('hiroshop');
+        render();
+      }
+    }
+
     function render() {
       const data = load();
       const ranking = Object.entries(data).sort((a,b)=>b[1].coins-a[1].coins);
@@ -85,9 +101,12 @@
 
       for (const [name, info] of ranking) {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="font-semibold">${name}</span> - ${formatCoins(info.coins)}
+        li.innerHTML = `
+          <span class="font-semibold">${name}</span> - ${formatCoins(info.coins)}
           <button onclick="addCoins('${name}', 1000)" class="text-green-600 ml-2">+1K</button>
-          <button onclick="addCoins('${name}', -1000)" class="text-red-600 ml-1">-1K</button>`;
+          <button onclick="addCoins('${name}', -1000)" class="text-red-600 ml-1">-1K</button>
+          <button onclick="adjustCoins('${name}')" class="text-blue-600 ml-1">±</button>
+        `;
         rankList.appendChild(li);
 
         const opt = document.createElement('option');
@@ -97,6 +116,12 @@
       }
 
       renderShop();
+    }
+
+    function adjustCoins(name) {
+      const delta = parseInt(prompt(`${name}のコインを増減する値を入力（例: 500 または -300）`));
+      if (isNaN(delta)) return;
+      addCoins(name, delta);
     }
 
     function addItem() {
@@ -136,6 +161,28 @@
           <button onclick="buyItem(${i})" class="ml-2 text-blue-600">購入</button>`;
         ul.appendChild(li);
       });
+    }
+
+    // ホワイトボード
+    const canvas = document.getElementById('board');
+    const ctx = canvas.getContext('2d');
+    let drawing = false;
+
+    canvas.addEventListener('pointerdown', e => {
+      drawing = true;
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    });
+    canvas.addEventListener('pointermove', e => {
+      if (!drawing) return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+    });
+    canvas.addEventListener('pointerup', () => drawing = false);
+    canvas.addEventListener('pointerleave', () => drawing = false);
+
+    function clearBoard() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
     render();
