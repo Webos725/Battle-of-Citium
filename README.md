@@ -2,3 +2,4 @@
 https://chatgpt.com
 
 live at https://konnitiwa768.github.io/Battle-of-Citium/2.html
+https://konnitiwa768.github.io/Battle-of-Citium/3.html
