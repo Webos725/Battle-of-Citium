@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ヒロコイン管理</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: 'Noto Sans JP', sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-6">
+  <div class="max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold text-center text-blue-700 mb-6">ヒロコイン管理サイト</h1>
+
+    <!-- キャラ追加フォーム -->
+    <div class="mb-4 flex gap-2">
+      <input id="nameInput" type="text" placeholder="キャラ名" class="flex-1 p-2 rounded border border-gray-300" />
+      <button onclick="addCharacter()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">追加</button>
+    </div>
+
+    <!-- ランキング -->
+    <div class="bg-white shadow rounded p-4 mb-6">
+      <h2 class="text-xl font-semibold mb-2">ランキング</h2>
+      <ul id="ranking" class="space-y-1"></ul>
+    </div>
+
+    <!-- ショップ -->
+    <div class="bg-white shadow rounded p-4">
+      <h2 class="text-xl font-semibold mb-2">ショップ</h2>
+
+      <div class="flex gap-2 mb-2">
+        <input id="itemName" placeholder="商品名" class="flex-1 p-2 border rounded" />
+        <input id="itemPrice" type="number" placeholder="価格" class="w-24 p-2 border rounded" />
+        <select id="sellerSelect" class="p-2 border rounded"></select>
+        <button onclick="addItem()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">出品</button>
+      </div>
+      <ul id="shopList" class="space-y-1"></ul>
+    </div>
+  </div>
+
+  <script>
+    const SI_UNITS = ['','K','M','G','T','P','E','Z','Y'];
+
+    function formatCoins(value) {
+      let i = 0;
+      while (value >= 1000 && i < SI_UNITS.length - 1) {
+        value /= 1000;
+        i++;
+      }
+      return value.toFixed(2).replace(/\.00$/, '') + SI_UNITS[i];
+    }
+
+    function load() {
+      return JSON.parse(localStorage.getItem('hirocoins') || '{}');
+    }
+
+    function save(data) {
+      localStorage.setItem('hirocoins', JSON.stringify(data));
+      render();
+    }
+
+    function addCharacter() {
+      const name = document.getElementById('nameInput').value.trim();
+      if (!name) return;
+      const data = load();
+      if (!data[name]) data[name] = { coins: 1000 };
+      save(data);
+      document.getElementById('nameInput').value = '';
+    }
+
+    function addCoins(name, delta) {
+      const data = load();
+      data[name].coins += delta;
+      save(data);
+    }
+
+    function render() {
+      const data = load();
+      const ranking = Object.entries(data).sort((a,b)=>b[1].coins-a[1].coins);
+      const rankList = document.getElementById('ranking');
+      rankList.innerHTML = '';
+      const sellerSelect = document.getElementById('sellerSelect');
+      sellerSelect.innerHTML = '';
+
+      for (const [name, info] of ranking) {
+        const li = document.createElement('li');
+        li.innerHTML = `<span class="font-semibold">${name}</span> - ${formatCoins(info.coins)}
+          <button onclick="addCoins('${name}', 1000)" class="text-green-600 ml-2">+1K</button>
+          <button onclick="addCoins('${name}', -1000)" class="text-red-600 ml-1">-1K</button>`;
+        rankList.appendChild(li);
+
+        const opt = document.createElement('option');
+        opt.value = name;
+        opt.textContent = name;
+        sellerSelect.appendChild(opt);
+      }
+
+      renderShop();
+    }
+
+    function addItem() {
+      const name = document.getElementById('itemName').value.trim();
+      const price = parseInt(document.getElementById('itemPrice').value);
+      const seller = document.getElementById('sellerSelect').value;
+      if (!name || isNaN(price)) return;
+      const items = JSON.parse(localStorage.getItem('hiroshop') || '[]');
+      items.push({ name, price, seller });
+      localStorage.setItem('hiroshop', JSON.stringify(items));
+      document.getElementById('itemName').value = '';
+      document.getElementById('itemPrice').value = '';
+      renderShop();
+    }
+
+    function buyItem(index) {
+      const data = load();
+      const items = JSON.parse(localStorage.getItem('hiroshop') || '[]');
+      const item = items[index];
+      const buyer = prompt(`誰が「${item.name}」を買いますか？`);
+      if (!buyer || !data[buyer] || data[buyer].coins < item.price) return alert('購入できません');
+      data[buyer].coins -= item.price;
+      data[item.seller].coins += item.price;
+      items.splice(index, 1);
+      localStorage.setItem('hiroshop', JSON.stringify(items));
+      save(data);
+    }
+
+    function renderShop() {
+      const items = JSON.parse(localStorage.getItem('hiroshop') || '[]');
+      const ul = document.getElementById('shopList');
+      ul.innerHTML = '';
+      items.forEach((item, i) => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <span class="font-semibold">${item.name}</span> - ${formatCoins(item.price)} by ${item.seller}
+          <button onclick="buyItem(${i})" class="ml-2 text-blue-600">購入</button>`;
+        ul.appendChild(li);
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
