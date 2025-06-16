@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>領土シミュレーター</title>
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 1em; }
+    #canvasContainer { position: relative; width: 600px; height: 400px; }
+    #overlayImage { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+    canvas { position: absolute; left: 0; top: 0; border: 1px solid #000; touch-action: none; }
+    #controls { display: flex; flex-direction: column; gap: 0.5em; }
+    #ranking span { cursor: pointer; padding: 0 4px; }
+    #timestampDisplay { font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>領土シミュレーター</h1>
+  <div id="controls">
+    <label>太さ: <input type="range" id="brushSize" min="1" max="50" value="5"></label>
+    <label>色: <input type="color" id="brushColor" value="#ff0000"></label>
+    <label><input type="checkbox" id="markerMode"> マーカー設置モード</label>
+    <label><input type="checkbox" id="pausePaint"> ペイント一時停止</label>
+    <input type="file" id="imgUpload" accept="image/*">
+    <button onclick="clearCanvas()">全消去</button>
+
+    <div>
+      <label>開始日時: <input type="datetime-local" id="startDateTime" value="1930-04-16T11:30:25"></label>
+      <label>間隔(秒): <input type="number" id="interval" value="60"></label>
+      <button onclick="toggleTimeAdvance()" id="timeToggle">時系列スタート</button>
+      <div id="timestampDisplay"></div>
+    </div>
+  </div>
+
+  <div id="canvasContainer">
+    <img id="overlayImage">
+    <canvas id="mapCanvas" width="600" height="400"></canvas>
+  </div>
+
+  <div id="ranking">ランキング: <span id="rankingList"></span></div>
+
+  <script>
+    const canvas = document.getElementById("mapCanvas");
+    const ctx = canvas.getContext("2d");
+    const brushSize = document.getElementById("brushSize");
+    const brushColor = document.getElementById("brushColor");
+    const markerMode = document.getElementById("markerMode");
+    const pausePaint = document.getElementById("pausePaint");
+    const overlayImage = document.getElementById("overlayImage");
+    const timestampDisplay = document.getElementById("timestampDisplay");
+    let painting = false;
+    let timeInterval = null;
+    let currentTime = new Date(document.getElementById("startDateTime").value);
+
+    function getPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((e.touches ? e.touches[0].clientX : e.clientX) - rect.left) * (canvas.width / rect.width);
+      const y = ((e.touches ? e.touches[0].clientY : e.clientY) - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    }
+
+    function startPaint(e) {
+      if (pausePaint.checked) return;
+      const pos = getPos(e);
+      if (markerMode.checked) {
+        placeMarker(pos.x, pos.y);
+        saveToLocal(); updateRanking();
+      } else {
+        painting = true;
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+      }
+      e.preventDefault();
+    }
+
+    function draw(e) {
+      if (!painting || markerMode.checked || pausePaint.checked) return;
+      const pos = getPos(e);
+      ctx.lineWidth = brushSize.value;
+      ctx.strokeStyle = brushColor.value;
+      ctx.lineCap = "round";
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      e.preventDefault();
+    }
+
+    function endPaint(e) {
+      if (!markerMode.checked && painting) {
+        painting = false;
+        ctx.beginPath();
+        saveToLocal(); updateRanking();
+      }
+      e.preventDefault();
+    }
+
+    function placeMarker(x, y) {
+      ctx.beginPath();
+      ctx.fillStyle = brushColor.value;
+      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      localStorage.removeItem("territoryData");
+      updateRanking();
+    }
+
+    function saveToLocal() {
+      localStorage.setItem("territoryData", canvas.toDataURL());
+    }
+
+    function loadFromLocal() {
+      const dataURL = localStorage.getItem("territoryData");
+      if (dataURL) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0);
+        img.src = dataURL;
+      }
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join("");
+    }
+
+    function updateRanking() {
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const colorCount = {};
+      for (let i = 0; i < imgData.length; i += 4) {
+        const a = imgData[i + 3];
+        if (a === 0) continue;
+        const r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
+        const hex = rgbToHex(r, g, b);
+        colorCount[hex] = (colorCount[hex] || 0) + 1;
+      }
+      const ranking = Object.entries(colorCount).sort((a, b) => b[1] - a[1]);
+      const rankingList = document.getElementById("rankingList");
+      rankingList.innerHTML = "";
+      ranking.forEach(([color, count]) => {
+        const span = document.createElement("span");
+        span.textContent = `${color}: ${count}`;
+        span.style.color = color;
+        span.onclick = () => brushColor.value = color;
+        rankingList.appendChild(span);
+        rankingList.append(" | ");
+      });
+    }
+
+    function toggleTimeAdvance() {
+      if (timeInterval) {
+        clearInterval(timeInterval);
+        timeInterval = null;
+        document.getElementById("timeToggle").textContent = "時系列スタート";
+      } else {
+        currentTime = new Date(document.getElementById("startDateTime").value);
+        const step = parseInt(document.getElementById("interval").value) * 1000;
+        updateTimestampDisplay();
+        timeInterval = setInterval(() => {
+          currentTime = new Date(currentTime.getTime() + step);
+          updateTimestampDisplay();
+        }, step);
+        document.getElementById("timeToggle").textContent = "時系列停止";
+      }
+    }
+
+    function updateTimestampDisplay() {
+      timestampDisplay.textContent = currentTime.toLocaleString("ja-JP", {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+    }
+
+    document.getElementById("imgUpload").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        overlayImage.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    canvas.addEventListener("mousedown", startPaint);
+    canvas.addEventListener("mouseup", endPaint);
+    canvas.addEventListener("mousemove", draw);
+    canvas.addEventListener("touchstart", startPaint);
+    canvas.addEventListener("touchend", endPaint);
+    canvas.addEventListener("touchmove", draw);
+
+    loadFromLocal();
+    updateRanking();
+  </script>
+</body>
+</html>
