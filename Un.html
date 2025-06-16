@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Poop Clicker DX</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f9e7c7;
+      color: #3e2f1c;
+      text-align: center;
+      transition: background 1s;
+    }
+    #poopImage {
+      width: 220px;
+      cursor: pointer;
+      margin: 20px;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(80,60,30,0.3);
+    }
+    .section {
+      max-width: 600px;
+      margin: auto;
+    }
+    .shop-item, .upgrade-item {
+      margin: 10px;
+      padding: 10px;
+      background: #fffbe0;
+      border: 1px solid #99845f;
+      border-radius: 8px;
+    }
+    button {
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>💩 Poop Clicker DX 💩</h1>
+  <p>Poop: <span id="poop">0</span></p>
+  <img id="poopImage" src="" alt="Poop">
+  <p><button onclick="resetGame()">🔁 リセット</button></p>
+
+  <div class="section">
+    <h2>施設ショップ</h2>
+    <div id="shop"></div>
+  </div>
+
+  <div class="section">
+    <h2>ミルクアップグレード</h2>
+    <div id="upgrades"></div>
+  </div>
+
+  <audio id="clickSE" src="https://cdn.pixabay.com/audio/2022/03/15/audio_676d8b6c4f.mp3" preload="auto"></audio>
+
+  <script>
+    let poop = 0;
+    let clickPower = 1;
+    let milkLevel = 0;
+
+    const milkData = [
+      { name: "なし", multiplier: 1, cost: 0, color: "#f9e7c7", image: "https://i.imgur.com/0D0Zf5C.png" },
+      { name: "低脂肪ミルク", multiplier: 1.5, cost: 1000, color: "#e1f0e5", image: "https://i.imgur.com/lYJ0gxM.png" },
+      { name: "普通ミルク", multiplier: 3, cost: 7e6, color: "#d9f1ff", image: "https://i.imgur.com/HEUIZon.png" },
+      { name: "濃厚ミルク", multiplier: 6, cost: 140e12, color: "#fff5d6", image: "https://i.imgur.com/sauX3hj.png" },
+      { name: "金のミルク", multiplier: 10, cost: 136e15, color: "#fff8b2", image: "https://i.imgur.com/2Iuh4AZ.png" }
+    ];
+
+    const facilities = [
+      { name: "トイレットペーパー工場", baseCost: 15, basePower: 0.1, count: 0 },
+      { name: "汚れた靴屋", baseCost: 100, basePower: 1, count: 0 },
+      { name: "下痢製造機", baseCost: 1100, basePower: 8, count: 0 },
+      { name: "トイレ神殿", baseCost: 12000, basePower: 47, count: 0 },
+      { name: "くさい牧場", baseCost: 130000, basePower: 260, count: 0 },
+      { name: "う○こ衛星", baseCost: 1.4e6, basePower: 1400, count: 0 },
+      { name: "排泄工場", baseCost: 2e7, basePower: 7800, count: 0 },
+      { name: "便秘AI", baseCost: 3e8, basePower: 44000, count: 0 },
+      { name: "ミステリートイレ", baseCost: 5e9, basePower: 260000, count: 0 },
+      { name: "う○こブラックホール", baseCost: 8e10, basePower: 1600000, count: 0 }
+    ];
+
+    const poopEl = document.getElementById("poop");
+    const shopEl = document.getElementById("shop");
+    const upgradesEl = document.getElementById("upgrades");
+    const poopImage = document.getElementById("poopImage");
+    const clickSE = document.getElementById("clickSE");
+
+    poopImage.onclick = () => {
+      poop += clickPower * milkData[milkLevel].multiplier;
+      clickSE.currentTime = 0;
+      clickSE.play();
+      updateDisplay();
+    };
+
+    function buyFacility(index) {
+      const f = facilities[index];
+      const cost = Math.floor(f.baseCost * Math.pow(1.15, f.count));
+      if (poop >= cost) {
+        poop -= cost;
+        f.count++;
+        updateDisplay();
+      }
+    }
+
+    function buyMilk(level) {
+      const data = milkData[level];
+      if (milkLevel === level - 1 && poop >= data.cost) {
+        poop -= data.cost;
+        milkLevel = level;
+        updateDisplay();
+      }
+    }
+
+    function updateDisplay() {
+      poopEl.textContent = Math.floor(poop);
+
+      document.body.style.backgroundColor = milkData[milkLevel].color;
+      poopImage.src = milkData[milkLevel].image;
+
+      shopEl.innerHTML = "";
+      facilities.forEach((f, i) => {
+        const cost = Math.floor(f.baseCost * Math.pow(1.15, f.count));
+        const el = document.createElement("div");
+        el.className = "shop-item";
+        el.innerHTML = `${f.name}（${f.count}）<br>生産: ${f.basePower}/秒<br>価格: ${cost} Poop<br><button onclick="buyFacility(${i})">購入</button>`;
+        shopEl.appendChild(el);
+      });
+
+      upgradesEl.innerHTML = "";
+      for (let i = 1; i <= 4; i++) {
+        const data = milkData[i];
+        const bought = milkLevel >= i;
+        const el = document.createElement("div");
+        el.className = "upgrade-item";
+        el.innerHTML = `${data.name}（倍率×${data.multiplier}）<br><button ${bought ? 'disabled' : ''} onclick="buyMilk(${i})">${bought ? "購入済み" : `${data.cost} Poopで購入`}</button>`;
+        upgradesEl.appendChild(el);
+      }
+
+      saveGame();
+    }
+
+    function producePoop() {
+      facilities.forEach(f => {
+        poop += f.basePower * f.count * milkData[milkLevel].multiplier / 10;
+      });
+      updateDisplay();
+    }
+
+    function saveGame() {
+      const saveData = {
+        poop,
+        milkLevel,
+        facilities: facilities.map(f => f.count)
+      };
+      localStorage.setItem("poopClickerSave", JSON.stringify(saveData));
+    }
+
+    function loadGame() {
+      const data = localStorage.getItem("poopClickerSave");
+      if (data) {
+        const save = JSON.parse(data);
+        poop = save.poop || 0;
+        milkLevel = save.milkLevel || 0;
+        save.facilities?.forEach((count, i) => {
+          if (facilities[i]) facilities[i].count = count;
+        });
+      }
+    }
+
+    function resetGame() {
+      if (confirm("本当にリセットしますか？")) {
+        poop = 0;
+        milkLevel = 0;
+        facilities.forEach(f => f.count = 0);
+        localStorage.removeItem("poopClickerSave");
+        updateDisplay();
+      }
+    }
+
+    // 初期化
+    loadGame();
+    updateDisplay();
+    setInterval(producePoop, 100); // 0.1秒ごとに生産
+  </script>
+</body>
+</html>
