@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>領土シミュレーター</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; }
+    #controls { padding: 10px; background: #f0f0f0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    canvas { border: 1px solid #ccc; touch-action: none; display: block; margin: 10px auto; }
+    #imageOverlay { position: absolute; top: 10px; left: 10px; pointer-events: none; max-width: 100%; }
+    #ranking div { cursor: pointer; padding: 5px; }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <label>色: <input type="color" id="color" /></label>
+    <label>太さ: <input type="range" id="size" min="1" max="50" value="10" /></label>
+    <label><input type="checkbox" id="pausePaint" /> ペイント一時停止</label>
+    <button id="eyedropper">スポイト</button>
+    <label>画像アップロード: <input type="file" id="imageUpload" /></label>
+    <label>開始日時: <input type="datetime-local" id="startTime" /></label>
+    <label>間隔(秒): <input type="number" id="interval" value="10" min="1" /></label>
+    <button id="startTimeline">時系列開始</button>
+    <span id="timestamp"></span>
+  </div>
+
+  <div style="position: relative;">
+    <canvas id="territoryCanvas" width="800" height="600"></canvas>
+    <img id="imageOverlay" />
+  </div>
+
+  <div id="ranking"></div>
+
+  <script>
+    const canvas = document.getElementById("territoryCanvas");
+    const ctx = canvas.getContext("2d");
+    const colorPicker = document.getElementById("color");
+    const sizePicker = document.getElementById("size");
+    const pausePaint = document.getElementById("pausePaint");
+    const eyedropper = document.getElementById("eyedropper");
+    const imageUpload = document.getElementById("imageUpload");
+    const imageOverlay = document.getElementById("imageOverlay");
+    const startTimeInput = document.getElementById("startTime");
+    const intervalInput = document.getElementById("interval");
+    const startTimelineBtn = document.getElementById("startTimeline");
+    const timestamp = document.getElementById("timestamp");
+    const rankingDiv = document.getElementById("ranking");
+
+    let isDrawing = false;
+    let isEyedropper = false;
+    let timelineInterval = null;
+    let currentTime = new Date();
+
+    canvas.addEventListener("pointerdown", (e) => {
+      if (pausePaint.checked) return;
+      const pos = getPointerPosition(e);
+      if (isEyedropper) {
+        const pixel = ctx.getImageData(pos.x, pos.y, 1, 1).data;
+        const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+        colorPicker.value = hex;
+        isEyedropper = false;
+        return;
+      }
+      isDrawing = true;
+      draw(pos);
+    });
+
+    canvas.addEventListener("pointermove", (e) => {
+      if (isDrawing && !pausePaint.checked) draw(getPointerPosition(e));
+    });
+
+    canvas.addEventListener("pointerup", () => {
+      isDrawing = false;
+      updateRanking();
+    });
+
+    function getPointerPosition(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left + Math.random() * 4 - 2, // わずかなずれ
+        y: e.clientY - rect.top + Math.random() * 4 - 2
+      };
+    }
+
+    function draw({x, y}) {
+      ctx.fillStyle = colorPicker.value;
+      ctx.beginPath();
+      ctx.arc(x, y, sizePicker.value / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    imageUpload.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        imageOverlay.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    startTimelineBtn.addEventListener("click", () => {
+      if (timelineInterval) clearInterval(timelineInterval);
+      currentTime = new Date(startTimeInput.value);
+      const seconds = parseInt(intervalInput.value);
+      timelineInterval = setInterval(() => {
+        currentTime.setSeconds(currentTime.getSeconds() + seconds);
+        timestamp.textContent = formatDate(currentTime);
+      }, 1000);
+    });
+
+    function formatDate(d) {
+      return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}/${d.getHours()}:${d.getMinutes()}:${d.getSeconds()}`;
+    }
+
+    function rgbToHex(r, g, b) {
+      return "#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("");
+    }
+
+    function updateRanking() {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const colorCounts = {};
+      for (let i = 0; i < imageData.data.length; i += 4) {
+        const [r, g, b, a] = imageData.data.slice(i, i+4);
+        if (a === 0) continue;
+        const hex = rgbToHex(r, g, b);
+        colorCounts[hex] = (colorCounts[hex] || 0) + 1;
+      }
+      const sorted = Object.entries(colorCounts).sort((a, b) => b[1] - a[1]);
+      rankingDiv.innerHTML = "<h3>領土ランキング</h3>";
+      for (const [color, count] of sorted) {
+        const div = document.createElement("div");
+        div.textContent = `${color}: ${count}`;
+        div.style.background = color;
+        div.style.color = "#fff";
+        div.addEventListener("click", () => {
+          colorPicker.value = color;
+        });
+        rankingDiv.appendChild(div);
+      }
+    }
+
+    eyedropper.addEventListener("click", () => {
+      isEyedropper = true;
+    });
+  </script>
+</body>
+</html>
