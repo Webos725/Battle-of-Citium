@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Poop Clicker DX</title>
+  <title>Poopクリッカー</title>
   <style>
     body {
       font-family: sans-serif;
@@ -42,7 +42,7 @@
   </style>
 </head>
 <body>
-  <h1>💩 Poop Clicker DX 💩</h1>
+  <h1>💩 Poop クリッカー 💩</h1>
   <p>Poop: <span id="poop">0</span></p>
   <img id="poopImage" src="" alt="Poop">
   <p><button onclick="resetGame()">🔁 リセット</button></p>
@@ -80,14 +80,18 @@
       { name: "濃厚ミルク", multiplier: 6, cost: 140e12, color: "#fff5d6", image: "export1750063812443.png" },
       { name: "金のミルク", multiplier: 10, cost: 136e15, color: "#fff8b2", image: "export1750063812443.png" },
       { name: "チョコミルク", multiplier: 17, cost: 792e17, color: "#aa3300", image: "export1750063812443.png" },
-      { name: "イチゴオレ", multiplier: 30, cost: 96e23, color: "#ff66ff", image: "export1750063812443.png" }
+      { name: "イチゴオレ", multiplier: 30, cost: 96e23, color: "#ff66ff", image: "export1750063812443.png" },
+      { name: "メロンミルク", multiplier: 36, cost: 36e24, color: "#66ff66", image: "export1750063812443.png" },
+      { name: "ライムミルク", multiplier: 48, cost: 21.6e28, color: "#33ff33", image: "export1750063812443.png" }
     ];
 
     const clickUpgrades = [
       { power: 5, cost: 4000 },
       { power: 4500, cost: 3.5e6 },
       { power: 80e7, cost: 25e10 },
-      { power: 90e15, cost: 135e16 }
+      { power: 90e15, cost: 135e16 },
+      { power: 10e18, cost: 21.5e21 },
+      { power: 10e21, cost: 21.5e24 }
     ];
 
     const facilities = [
@@ -104,7 +108,10 @@
       { name: "う○この魔法塔", baseCost: 9.6e11, basePower: 57600000, count: 0 },
       { name: "う○こ貨物船", baseCost: 36.6e13, basePower: 887600000, count: 0 },
       { name: "う○こタイムマシン", baseCost: 75.6e15, basePower: 9997600000, count: 0 },
-      { name: "レインボーう○こ", baseCost: 91.6e16, basePower: 84557600000, count: 0 }
+      { name: "レインボーう○こ", baseCost: 91.6e16, basePower: 84557600000, count: 0 },
+      { name: "プリズムう○こ", baseCost: 111.6e19, basePower: 1284557624000, count: 0 },
+      { name: "ベレーナルう○こ", baseCost: 1.3e24, basePower: 14484257630000, count: 0 },
+      { name: "フラクタルう○こ", baseCost: 32.23e27, basePower: 192544387690000, count: 0 }
     ];
 
     const poopEl = document.getElementById("poop");
