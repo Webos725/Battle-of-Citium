@@ -141,8 +141,8 @@
       { name: "金のミルク", multiplier: 10, cost: 136000000000000000, color: "#fff8b2", image: "export1750063812443.png" },
       { name: "チョコミルク", multiplier: 17, cost: 79200000000000000000, color: "#aa3300", image: "export1750063812443.png" },
       { name: "イチゴオレ", multiplier: 30, cost: 96000000000000000000000000, color: "#ff66ff", image: "export1750063812443.png" },
-      { name: "メロンミルク", multiplier: 36, cost: 36000000000000000000000000, color: "#66ff66", image: "export1750063812443.png" },
-      { name: "ライムミルク", multiplier: 48, cost: 21600000000000000000000000000, color: "#33ff33", image: "export1750063812443.png" }
+      { name: "メロンミルク", multiplier: 36, cost: 236000000000000000000000000, color: "#66ff66", image: "export1750063812443.png" },
+      { name: "ライムミルク", multiplier: 48, cost: 111600000000000000000000000000, color: "#33ff33", image: "export1750063812443.png" }
     ];
 
     // クリックアップグレード
@@ -317,7 +317,7 @@
 
       // ミルクアップグレード更新（4つだけ表示）
       upgradesEl.innerHTML = "";
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 8; i++) {
         const data = milkData[i];
         const bought = milkLevel >= i;
         const div = document.createElement("div");
