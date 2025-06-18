@@ -376,6 +376,77 @@
 
     // 初期表示更新
     updateDisplay();
+    <script>
+      // ゲーム状態保存用の関数
+      function saveGame() {
+            const saveData = {
+                  poop,
+                  clickPower,
+                  milkLevel,
+                  clickUpgradeLevel,
+                  feverMode,
+                  rebirthCount,
+                  rebirthMultiplier,
+                  facilities: facilities.map(f => f.count),
+                  lastSaveTime: Date.now()
+            };
+            localStorage.setItem('poopClickerSave', JSON.stringify(saveData));
+      }
+
+      // ゲーム状態読み込み用の関数
+      function loadGame() {
+            const saveDataStr = localStorage.getItem('poopClickerSave');
+            if (!saveDataStr) return;
+
+            try {
+                  const saveData = JSON.parse(saveDataStr);
+
+                  // オフライン時間計算（秒）
+                  const now = Date.now();
+                  const offlineMs = now - (saveData.lastSaveTime || now);
+                  const offlineSeconds = offlineMs / 1000;
+
+                  // 状態復元
+                  poop = saveData.poop || 0;
+                  clickPower = saveData.clickPower || 1;
+                  milkLevel = saveData.milkLevel || 0;
+                  clickUpgradeLevel = saveData.clickUpgradeLevel || 0;
+                  feverMode = false; // フィーバーはリセット
+                  rebirthCount = saveData.rebirthCount || 0;
+                  rebirthMultiplier = saveData.rebirthMultiplier || 1;
+                  if (saveData.facilities && Array.isArray(saveData.facilities)) {
+                        facilities.forEach((f, i) => {
+                              f.count = saveData.facilities[i] || 0;
+                        });
+                  }
+
+                  // オフライン稼ぎ計算（秒×秒間生産量×倍率）
+                  const offlineProductionPerSec = facilities.reduce((acc, f) => {
+                        return acc + f.basePower * f.count * rebirthMultiplier;
+                  }, 0);
+
+                  poop += offlineProductionPerSec * offlineSeconds;
+
+                  updateDisplay();
+            } catch (e) {
+                  console.error("セーブデータの読み込みに失敗しました:", e);
+            }
+      }
+
+      // 一定時間ごとに自動セーブ（例: 10秒に1回）
+      setInterval(() => {
+            saveGame();
+      }, 10000);
+
+      // ウィンドウを閉じる直前にも保存
+      window.addEventListener('beforeunload', () => {
+            saveGame();
+      });
+
+      // ページ読み込み時にロード処理
+      window.addEventListener('load', () => {
+            loadGame();
+      });
   </script>
 </body>
 </html>
