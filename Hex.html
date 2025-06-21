@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>氷割りバトル 🧊</title>
+  <style>
+    body { font-family: sans-serif; background: #eef; text-align: center; }
+    .grid {
+      display: flex;
+      flex-wrap: wrap;
+      width: 520px;
+      margin: 20px auto;
+    }
+    .hex {
+      width: 60px;
+      height: 52px;
+      background: skyblue;
+      clip-path: polygon(
+        50% 0%, 100% 25%, 100% 75%,
+        50% 100%, 0% 75%, 0% 25%
+      );
+      margin: 2px;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .hex.red { background: #ff6b6b; }
+    .hex.broken { background: #bbb; pointer-events: none; }
+
+    .stick {
+      width: 6px;
+      height: 40px;
+      background: #555;
+      position: absolute;
+      top: -45px;
+      left: 27px;
+      transform-origin: bottom center;
+      animation: hit 0.2s ease-in-out 5;
+    }
+    @keyframes hit {
+      0% { transform: rotate(0deg); }
+      50% { transform: rotate(-30deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    #status, #turnInfo, #playerAction {
+      margin: 10px;
+      font-size: 18px;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      color: white;
+      font-size: 24px;
+      display: none;
+      flex-direction: column;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>氷割りバトル 🧊</h1>
+  <p id="turnInfo">現在のターン: Player 1</p>
+  <button onclick="spinRoulette()">🎲 自分だけが押す: ルーレット</button>
+  <p id="playerAction">アクション: 未選択</p>
+  <div class="grid" id="grid"></div>
+  <p id="status">ゲーム開始！</p>
+
+  <!-- モーダル表示（行動確認） -->
+  <div class="modal" id="modal">
+    <div id="modalText">行動: 通常叩く</div>
+    <button onclick="confirmAction()">OK（相手に見せない）</button>
+  </div>
+
+  <script>
+    const grid = document.getElementById("grid");
+    const playerAction = document.getElementById("playerAction");
+    const turnInfo = document.getElementById("turnInfo");
+    const status = document.getElementById("status");
+    const modal = document.getElementById("modal");
+    const modalText = document.getElementById("modalText");
+
+    const actions = [
+      "通常叩く",
+      "強く叩く（周囲確率UP）",
+      "スキャン（見かけだけ）",
+      "移動（効果なし）",
+      "色交換（効果なし）",
+      "自氷防御UP（効果なし）",
+      "敵氷凍結（効果なし）",
+      "ハズレ（行動なし）"
+    ];
+
+    let blocks = [];
+    let currentPlayer = 1;
+    let currentAction = null;
+    let gameEnded = false;
+
+    function init() {
+      const colors = Array(25).fill("red").concat(Array(25).fill("blue"));
+      colors.sort(() => Math.random() - 0.5);
+      for (let i = 0; i < 50; i++) {
+        const div = document.createElement("div");
+        div.className = "hex " + (colors[i] === "red" ? "red" : "");
+        div.dataset.index = i;
+        div.onclick = () => onClickBlock(i);
+        grid.appendChild(div);
+        blocks.push({
+          element: div,
+          broken: false,
+          color: colors[i]
+        });
+      }
+    }
+
+    function spinRoulette() {
+      if (gameEnded) return;
+      const i = Math.floor(Math.random() * actions.length);
+      currentAction = actions[i];
+      modalText.textContent = `🎲 行動: ${currentAction}`;
+      modal.style.display = "flex";
+    }
+
+    function confirmAction() {
+      modal.style.display = "none";
+      playerAction.textContent = `アクション: ${currentAction}`;
+    }
+
+    function onClickBlock(index) {
+      if (!currentAction || gameEnded) return;
+      const block = blocks[index];
+      if (block.broken) return;
+
+      if (currentAction === "ハズレ（行動なし）") {
+        endTurn("ハズレ！");
+        return;
+      }
+
+      // アニメーション棒
+      const stick = document.createElement("div");
+      stick.className = "stick";
+      block.element.appendChild(stick);
+
+      setTimeout(() => {
+        block.element.removeChild(stick);
+        if (currentAction.includes("叩く")) {
+          tryBreakBlock(index);
+        }
+        endTurn("次のプレイヤーへ");
+      }, 1200);
+    }
+
+    function tryBreakBlock(index) {
+      const block = blocks[index];
+      if (block.broken) return;
+
+      const chance = currentAction.includes("強く") ? 0.6 : 0.3;
+      if (Math.random() < chance) {
+        block.broken = true;
+        block.element.classList.add("broken");
+        checkWin();
+        return;
+      }
+
+      const neighbors = getNeighbors(index);
+      const randNeighbor = neighbors[Math.floor(Math.random() * neighbors.length)];
+      if (randNeighbor && !blocks[randNeighbor].broken && Math.random() < 0.2) {
+        blocks[randNeighbor].broken = true;
+        blocks[randNeighbor].element.classList.add("broken");
+        checkWin();
+      }
+    }
+
+    function getNeighbors(index) {
+      const res = [];
+      if (index > 0) res.push(index - 1);
+      if (index < 49) res.push(index + 1);
+      if (index - 10 >= 0) res.push(index - 10);
+      if (index + 10 < 50) res.push(index + 10);
+      return res;
+    }
+
+    function endTurn(message) {
+      currentAction = null;
+      currentPlayer = currentPlayer === 1 ? 2 : 1;
+      turnInfo.textContent = `現在のターン: Player ${currentPlayer}`;
+      playerAction.textContent = "アクション: 未選択";
+      status.textContent = message;
+    }
+
+    function checkWin() {
+      if (blocks.every(b => b.broken)) {
+        status.textContent = `🎉 Player ${currentPlayer} の勝利！ 🎉`;
+        gameEnded = true;
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
