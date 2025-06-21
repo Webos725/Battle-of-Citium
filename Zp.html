@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ZpDIC API操作ツール</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+    input, textarea, button {
+      display: block;
+      margin: 8px 0;
+      padding: 6px;
+      width: 100%;
+      max-width: 500px;
+    }
+    textarea {
+      height: 60px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ZpDIC API操作ツール</h1>
+
+  <label>APIキー:</label>
+  <input type="text" id="apiKey">
+
+  <label>辞書ID:</label>
+  <input type="text" id="dictionaryId" placeholder="例: 1197">
+
+  <hr>
+
+  <h2>🔹 単語を追加</h2>
+  <input id="wordName" placeholder="単語名">
+  <input id="pronunciation" placeholder="発音 (例: fo͞o-bär)">
+  <input id="wordMeaning" placeholder="意味 (例: 架空の語)">
+  <button onclick="addWord()">単語を追加</button>
+
+  <hr>
+
+  <h2>🔍 単語を取得</h2>
+  <input id="wordNumber" placeholder="単語番号 (例: 123)">
+  <button onclick="getWord()">単語を取得</button>
+  <pre id="wordResult"></pre>
+
+  <hr>
+
+  <h2>💬 例文を追加</h2>
+  <textarea id="sentence" placeholder="例文 (This is foobar.)"></textarea>
+  <textarea id="translation" placeholder="翻訳 (これはfoobarです。)"></textarea>
+  <input id="exampleWordNumber" placeholder="関連する単語番号 (例: 123)">
+  <button onclick="addExample()">例文を追加</button>
+
+  <script>
+    const apiBase = 'https://zpdic.ziphil.com/api/v0';
+
+    function getHeaders() {
+      const apiKey = document.getElementById('apiKey').value;
+      return {
+        'Content-Type': 'application/json',
+        'X-Api-Key': apiKey
+      };
+    }
+
+    async function addWord() {
+      const dictionaryId = document.getElementById('dictionaryId').value;
+      const name = document.getElementById('wordName').value;
+      const pronunciation = document.getElementById('pronunciation').value;
+      const meaning = document.getElementById('wordMeaning').value;
+
+      const body = {
+        word: {
+          name: name,
+          pronunciation: pronunciation,
+          equivalents: [],
+          tags: [],
+          informations: [{ title: "意味", text: meaning }],
+          variations: [],
+          relations: []
+        }
+      };
+
+      const res = await fetch(`${apiBase}/dictionary/${dictionaryId}/word`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      alert(res.ok ? '✅ 単語を追加しました' : `❌ エラー: ${res.status}`);
+    }
+
+    async function getWord() {
+      const dictionaryId = document.getElementById('dictionaryId').value;
+      const number = document.getElementById('wordNumber').value;
+
+      const res = await fetch(`${apiBase}/dictionary/${dictionaryId}/word/${number}`, {
+        headers: getHeaders()
+      });
+
+      const data = await res.json();
+      document.getElementById('wordResult').textContent = JSON.stringify(data, null, 2);
+    }
+
+    async function addExample() {
+      const dictionaryId = document.getElementById('dictionaryId').value;
+      const sentence = document.getElementById('sentence').value;
+      const translation = document.getElementById('translation').value;
+      const wordNumber = parseInt(document.getElementById('exampleWordNumber').value);
+
+      const body = {
+        example: {
+          sentence: sentence,
+          translation: translation,
+          supplement: "",
+          tags: [],
+          words: [{ number: wordNumber }],
+          offer: null
+        }
+      };
+
+      const res = await fetch(`${apiBase}/dictionary/${dictionaryId}/example`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body)
+      });
+
+      alert(res.ok ? '✅ 例文を追加しました' : `❌ エラー: ${res.status}`);
+    }
+  </script>
+</body>
+</html>
