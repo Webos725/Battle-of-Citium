@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ポイント・サバイバーズ</title>
+<style>
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0a0f2f 0%, #1a254f 100%);
+    color: #e0e0e0;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 2.5rem;
+    color: #0ff;
+    text-shadow: 0 0 10px #0ff;
+    margin-bottom: 20px;
+  }
+  select, button {
+    font-size: 1rem;
+    padding: 8px;
+    margin: 6px;
+    border: none;
+    border-radius: 4px;
+    background: #0f3;
+    color: #000;
+    cursor: pointer;
+    box-shadow: 0 0 8px #0f3;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  #player-stats, #hand-cards, #log {
+    width: 600px;
+    margin: 12px auto;
+    background: rgba(10,15,47,0.8);
+    border: 1px solid #0ff;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 0 12px #0ff;
+    text-align: left;
+  }
+  #hand-cards { font-size: 1.1rem; }
+  .card-animation {
+    position: absolute;
+    z-index: 10;
+    width: 80px;
+    height: 120px;
+    background: #0ff;
+    border-radius: 6px;
+    animation: swing 0.6s ease-out forwards;
+    pointer-events: none;
+  }
+  @keyframes swing {
+    0% { transform: translate(0,0) rotate(0deg); opacity: 1; }
+    50% { transform: translate(-100px,-50px) rotate(-15deg); opacity: 0.8; }
+    100% { transform: translate(-200px,-100px) rotate(-30deg); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+  <h1>ポイント・サバイバーズ</h1>
+
+  <div id="setup-screen">
+    <h2>ロールを割り振ってください</h2>
+    <div>
+      スロット1:<select id="role0"><option>player</option><option>aiEa</option><option>aiNo</option><option>aiHa</option></select><br>
+      スロット2:<select id="role1"><option>player</option><option>aiEa</option><option>aiNo</option><option>aiHa</option></select><br>
+      スロット3:<select id="role2"><option>player</option><option>aiEa</option><option>aiNo</option><option>aiHa</option></select><br>
+      スロット4:<select id="role3"><option>player</option><option>aiEa</option><option>aiNo</option><option>aiHa</option></select><br>
+      <button onclick="startGame()">ゲーム開始</button>
+    </div>
+  </div>
+
+  <div id="game-screen" style="display:none;">
+    <div id="player-stats"></div>
+    <div id="action-buttons">
+      <button id="btn-point" onclick="drawPointCard()">ポイントカードを引く</button>
+      <button id="btn-skill" onclick="drawSkillCard()">技カードを引く</button>
+      <button id="btn-summon" onclick="summonCard()">召喚する</button>
+    </div>
+    <div id="hand-cards"></div>
+    <div id="log"></div>
+  </div>
+
+  <script src="ai.js"></script>
+  <script>
+    const pointRanks = [0.2,0.5,0.8,1.0,1.3,1.6,1.8,2.1,2.5,3.0];
+    const skillList = ["atk+","stealEffect","powerUp","pointSteal","attack","defenseNext","heal","lifesteal","pointDown","doubleEdge"];
+    let players=[],currentPlayerIndex=0;
+
+    function startGame(){
+      const roles = [0,1,2,3].map(i=>document.getElementById(`role${i}`).value);
+      players = roles.map(r=>({name:r==="player"?"あなた":r,role:r,hp:100,points:0.2,hand:[]}));
+      document.getElementById("setup-screen").style.display="none";
+      document.getElementById("game-screen").style.display="block";
+      log("ゲーム開始！");
+      turnStart();
+    }
+
+    function drawPointCard(){
+      const val = pointRanks[Math.floor(Math.random()*10)];
+      current().hand.push({type:"point",value:val});
+      log(`${current().name}がポイントカード +${val.toFixed(1)}pt を引いた`);
+      updateUI();
+    }
+
+    function drawSkillCard(){
+      const sk = skillList[Math.floor(Math.random()*skillList.length)];
+      current().hand.push({type:"skill",skill:sk});
+      log(`${current().name}が技カード「${sk}」を引いた`);
+      updateUI();
+    }
+
+    function summonCard(){
+      const me = current();
+      if(me.hand.length===0){log("手札がない！");return;}
+      const card = me.hand.shift();
+      const target = players.find(p=>p!==me);
+      if(card.type==="point"){
+        me.points+=card.value;
+        log(`${me.name}は +${card.value.toFixed(1)}pt （合計 ${me.points.toFixed(1)}pt）`);
+      } else {
+        applySkillEffect(me,card.skill,target);
+      }
+      animateAttack(me,target,card.type==="skill");
+      evaluateAfterAction(me,target);
+    }
+
+    function applySkillEffect(u,skill,t){
+      const f = {
+        atk+:()=>log(`${u.name}の攻撃力が強化`),
+        stealEffect:()=>log(`${u.name}がバフ奪取狙い`),
+        powerUp:()=>log(`${u.name}が自身強化`),
+        pointSteal:()=>{const a=Math.min(5,t.points);t.points-=a;u.points+=a;log(`${u.name}が${t.name}から${a.toFixed(1)}pt奪取`);},
+        attack:()=>{t.hp-=25;log(`${u.name}が${t.name}を攻撃 -25HP`);},
+        defenseNext:()=>log(`${u.name}が防御体勢を取った`),
+        heal:()=>{u.hp=Math.min(100,u.hp+30);log(`${u.name}が30HP回復`);},
+        lifesteal:()=>{t.hp-=20;u.hp=Math.min(100,u.hp+20);log(`${u.name}がライフスティール +20HP`);},
+        pointDown:()=>{const d=Math.min(10,t.points);t.points-=d;log(`${u.name}が${t.name}のpt -${d.toFixed(1)}`);},
+        doubleEdge:()=>{t.hp-=40;u.hp-=20;log(`${u.name}が両刃攻撃 -40/${t.name}, -20自分`);}
+      };
+      f[skill]();
+    }
+
+    function animateAttack(me,target,isAttack){
+      if(!isAttack) return;
+      const statDiv = document.getElementById("player-stats");
+      const from = currentPlayerIndex, to = players.indexOf(target);
+      const rect = statDiv.children[to].getBoundingClientRect();
+      const anim = document.createElement("div");
+      anim.className = "card-animation";
+      anim.style.top = `${rect.top}px`;
+      anim.style.left = `${rect.left + rect.width/2}px`;
+      document.body.appendChild(anim);
+      setTimeout(()=>anim.remove(),600);
+    }
+
+    function evaluateAfterAction(me, target){
+      if(target.hp<=0) respawn(target,me);
+      if(me.points>=100){log(`${me.name}が100pt達成！勝利！`);disableActions();}
+      else nextTurn();
+    }
+
+    function respawn(d,a){
+      const loss=+(d.points*0.15).toFixed(1);
+      d.points-=loss; a.points+=loss; d.hp=100;
+      log(`${d.name}は敗北→復活＆${loss}pt失った`);
+    }
+
+    function nextTurn(){
+      currentPlayerIndex=(currentPlayerIndex+1)%players.length;
+      turnStart();
+    }
+
+    function turnStart(){
+      const p=current();
+      log(`--- ${p.name} のターン ---`);
+      updateUI();
+      if(p.role!=="player") setTimeout(()=>aiTurn(p),800);
+    }
+
+    function current(){return players[currentPlayerIndex];}
+    function updateUI(){
+      const stats = players.map(p=>`<b>${p.name}</b> HP:${p.hp} pt:${p.points.toFixed(1)} 手札:${p.hand.length}`);
+      document.getElementById("player-stats").innerHTML=stats.join("<hr>");
+      document.getElementById("hand-cards").innerHTML=current().role==="player"?`手札: ${current().hand.map(c=>c.type==="point"?`+${c.value}`:c.skill).join(", ")}`:"";
+    }
+    function log(msg){document.getElementById("log").innerHTML=`${msg}<br>`+document.getElementById("log").innerHTML;}
+    function disableActions(){
+      document.getElementById("btn-point").disabled=true;
+      document.getElementById("btn-skill").disabled=true;
+      document.getElementById("btn-summon").disabled=true;
+    }
+  </script>
+</body>
+</html>
