@@ -158,7 +158,7 @@
         document.getElementById("timeToggle").textContent = "時系列スタート";
       } else {
         currentTime = new Date(document.getElementById("startDateTime").value);
-        const step = parseInt(document.getElementById("interval").value) * 1000;
+        const step = parseInt(document.getElementById("interval").value) * 1;
         updateTimestampDisplay();
         timeInterval = setInterval(() => {
           currentTime = new Date(currentTime.getTime() + step);
