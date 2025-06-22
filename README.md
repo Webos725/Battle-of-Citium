@@ -6,7 +6,7 @@ live at https://konnitiwa768.github.io/Battle-of-Citium/2.html
 https://konnitiwa768.github.io/Battle-of-Citium/3.html
 https://konnitiwa768.github.io/Battle-of-Citium/Teri3.html
 https://konnitiwa768.github.io/Battle-of-Citium/Zp.html
-https://konnitiwa768.github.io/Battle-of-Citium/7.html
+https://konnitiwa768.github.io/Battle-of-Citium/8.html
 https://konnitiwa768.github.io/Battle-of-Citium/Unk2.html
 https://konnitiwa768.github.io/Battle-of-Citium/Chink3.html
 https://konnitiwa768.github.io/Battle-of-Citium/Hex.html
