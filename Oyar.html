@@ -130,6 +130,7 @@
       "Iosgh", "Iolh", "Emu", "Luxr", "Valv",
       "Ashke", "Oir", "Mmt", "Artob", "Plamith",
       "Zeilk", "Owon", "Glom", "Lysk", "Oyar",
+      "Szl", "Crep", "Reisk", "Cryz", "Zlstus",
     ];
 
     // ミルクアップグレードデータ
@@ -174,8 +175,8 @@
       { name: "レインボーオヤール", baseCost: 101600000000000000, basePower: 484557600000, count: 0, image: "img/rainbow_poop.png" },
       { name: "プリズムオヤール", baseCost: 125760000000000000000, basePower: 321284557624000, count: 0, image: "img/prism_poop.png" },
       { name: "ベレーナルオヤール", baseCost: 136500000000000000000000, basePower: 2414484257630000, count: 0, image: "img/berenal_poop.png" },
-      { name: "フラクタルオヤール", baseCost: 240000000000000000000000000, basePower: 3456290833192544387690000, count: 0, image: "img/fractal_poop.png" },
-      { name: "あなた", baseCost: 356894589096666666666240000000000000000000000000, basePower: 229972299272927292723456290833192544387690000, count: 0, image: "img/oyar.png" },
+      { name: "フラクタルオヤール", baseCost: 240000000000000000000000000, basePower: 9956290833192544387690000, count: 0, image: "img/fractal_poop.png" },
+      { name: "あなた", baseCost: 28356894589096666666666240000000000000000000000000, basePower: 629972299272927292723456290833192544387690000, count: 0, image: "img/oyar.png" },
     ];
 
     // HTML要素取得
@@ -267,7 +268,7 @@
         return;
       }
       rebirthCount++;
-      rebirthMultiplier = 1 + rebirthCount * 0.15;
+      rebirthMultiplier = 1 + rebirthCount * 0.3;
       poop = 0;
       milkLevel = 0;
       clickPower = 1 * rebirthMultiplier;
