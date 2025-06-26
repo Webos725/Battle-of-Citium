@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>💩 Poopクリッカー 💩</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #f9e7c7;
+      color: #3e2f1c;
+      text-align: center;
+      transition: background 0.5s;
+    }
+    #poopImage {
+      width: 220px;
+      cursor: pointer;
+      margin: 20px auto;
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(80,60,30,0.3);
+      display: block;
+    }
+    .section {
+      max-width: 600px;
+      margin: 20px auto;
+      text-align: left;
+    }
+    .shop-item, .upgrade-item, .click-upgrade-item {
+      margin: 10px 0;
+      padding: 10px;
+      background: #fffbe0;
+      border: 1px solid #99845f;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .shop-item img, .upgrade-item img, .click-upgrade-item img {
+      width: 60px;
+      height: 60px;
+      border-radius: 8px;
+      object-fit: cover;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    }
+    button {
+      margin-left: auto;
+      padding: 6px 12px;
+      cursor: pointer;
+      border: none;
+      background-color: #99845f;
+      color: white;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      background-color: #7a6a42;
+    }
+    .fever {
+      animation: feverFlash 0.5s infinite alternate;
+    }
+    @keyframes feverFlash {
+      from { background-color: #ffcc00; }
+      to { background-color: #ffe066; }
+    }
+    #rebirthInfo {
+      margin-top: 20px;
+      background: #fffbe0;
+      border: 1px solid #99845f;
+      border-radius: 8px;
+      padding: 10px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>オヤールクリッカー</h1>
+  <p>Poop: <span id="poop">0</span></p>
+  <img id="poopImage" src="img/oyar.png" alt="Poop" />
+
+  <div class="section">
+    <h2>施設ショップ</h2>
+    <div id="shop"></div>
+  </div>
+  <p><button onclick="resetGame()">🔁 リセット</button></p>
+  <div class="section">
+    <h2>マグマアップグレード</h2>
+    <div id="upgrades"></div>
+  </div>
+
+  <div class="section">
+    <h2>クリックアップグレード</h2>
+    <div id="clickUpgrades"></div>
+  </div>
+
+  <div class="section">
+    <h2>転生ボーナス</h2>
+    <div id="rebirthSection">
+      <p>転生回数: <span id="rebirthCount">0</span></p>
+      <p>転生ボーナス: <span id="rebirthBonus">x1</span></p>
+      <button id="rebirthBtn" onclick="rebirth()" style="padding:10px 20px; font-size:16px;">🔄 転生する0000（現在のオヤールがリセットされます）</button>
+      <p id="rebirthInfo">転生することで、生産効率とクリック力にボーナスが永久に加算されます。ボーナスは転生回数に応じて増加します。</p>
+    </div>
+  </div>
+
+  <audio id="clickSE" src="https://cdn.pixabay.com/audio/2022/03/15/audio_676d8b6c4f.mp3" preload="auto"></audio>
+  <audio id="feverSE" src="https://cdn.pixabay.com/audio/2022/03/04/audio_9cf69cc69e.mp3" preload="auto"></audio>
+
+  <script>
+    // ゲームの基本ステート
+    let poop = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+    let clickPower = 10000000000000000000000000000000000000000000000000;
+    let milkLevel = 0;
+    let clickUpgradeLevel = 0;
+    let feverMode = false;
+    let feverTimeout;
+    let rebirthCount = 1;   // 転生回数
+    let rebirthMultiplier = 1;  // 転生ボーナス倍率
+
+    // 大きい数字用単位配列（無限に拡張可）
+    const units = [
+      "", "K", "M", "B", "T",
+      "Asth", "Aker", "Haus", "Vidl", "Pwen",
+      "Iosgh", "Iolh", "Emu", "Luxr", "Valv",
+      "Ashke", "Oir", "Mmt", "Artob", "Plamith",
+      "Zeilk", "Owon", "Glom", "Lysk", "Oyar",
+      "Szl", "Crep", "Reisk", "Cryz", "Zlstus",
+    ];
+
+    // ミルクアップグレードデータ
+    const milkData = [
+      { name: "なし", multiplier: 1, cost: 0, color: "#f9e7c7", image: "image/oyar.png" },
+      { name: "マグマ", multiplier: 1.5, cost: 1000, color: "#ff1100", image: "image/oyar.png" },
+      { name: "ちょっといいマグマ", multiplier: 3, cost: 7000000, color: "#ff6600", image: "image/oyar.png" },
+      { name: "灼熱のマグマ", multiplier: 6, cost: 140000000000, color: "#ffa900", image: "image/oyar.png" },
+      { name: "金のマグマ", multiplier: 10, cost: 1360000000000000, color: "#cccc00", image: "image/oyar.png" },
+      { name: "闇のマグマ", multiplier: 28, cost: 7920000000000000, color: "222222", image: "image/oyar.png" },
+      { name: "地獄のマグマ", multiplier: 40, cost: 9600000000000000000000, color: "#770000", image: "image/oyar.png" },
+      { name: "黒いマグマ", multiplier: 66, cost: 292272922360000000000000000000000000, color: "#000000", image: "image/oyar.png" },
+      { name: "酸のマグマ", multiplier: 148, cost: 272928262969111600000000000000000000000000000000000000000000019101992920, color: "#33ff00", image: "image/oyar.png" }
+    ];
+
+    // クリックアップグレード
+    const clickUpgrades = [
+      { power: 5, cost: 4000, image: "clickup_1.png" },
+      { power: 4500, cost: 3500000, image: "clickup_2.png" },
+      { power: 800000000, cost: 2500000000000, image: "clickup_3.png" },
+      { power: 9000000000000000, cost: 1350000000000000000, image: "clickup_4.png" },
+      { power: 1000000000000000000000, cost: 21500000000000000000000000, image: "clickup_5.png" },
+      { power: 10000000000000000000000000000, cost: 21500000000000000000000000000, image: "clickup_6.png" },
+      { power: 1000000000000000000000000000000000000000000000, cost: 4545454545454545565446788821500000000000000000000000000, image: "clickup_7.png" }
+    ];
+
+    // 施設データ
+    const facilities = [
+      { name: "オヤール", baseCost: 15, basePower: 1, count: 0, image: "img/oyar.png" },
+      { name: "オヤールのオーラ", baseCost: 100, basePower: 8, count: 0, image: "img/oyar_aura.png" },
+      { name: "オヤールの種", baseCost: 1900, basePower: 27, count: 0, image: "img/oyar_seed.png" },
+      { name: "占いの玉", baseCost: 40000, basePower: 150, count: 0, image: "img/fortune_ball.png" },
+      { name: "うんこからのオヤール", baseCost: 550000, basePower: 777, count: 0, image: "img/stinky_ranch.png" },
+      { name: "こげた衛星", baseCost: 8000000, basePower: 6500, count: 0, image: "img/poop_satellite.png" },
+      { name: "こげ工場", baseCost: 40000000, basePower: 50000, count: 0, image: "img/excretion_factory.png" },
+      { name: "酸の玉", baseCost: 1200000000, basePower: 300000, count: 0, image: "img/acid_ball.png" },
+      { name: "灼熱の火山", baseCost: 54000000000, basePower: 790000, count: 0, image: "img/infernality.png" },
+      { name: "う○こブラックホール", baseCost: 8000000000000, basePower: 8500000, count: 0, image: "img/poop_blackhole.png" },
+      { name: "う○この魔法塔", baseCost: 9600000000000000, basePower: 576000000, count: 0, image: "img/poop_magic_tower.png" },
+      { name: "う○こ貨物船", baseCost: 36600000000000000, basePower: 1887600000, count: 0, image: "img/poop_cargo_ship.png" },
+      { name: "う○こタイムマシン", baseCost: 7560000000000000000, basePower: 239997600000, count: 0, image: "img/poop_time_machine.png" },
+      { name: "レインボーオヤール", baseCost: 101600000000000000, basePower: 484557600000, count: 0, image: "img/rainbow_poop.png" },
+      { name: "プリズムオヤール", baseCost: 125760000000000000000, basePower: 321284557624000, count: 0, image: "img/prism_poop.png" },
+      { name: "ベレーナルオヤール", baseCost: 136500000000000000000000, basePower: 2414484257630000, count: 0, image: "img/berenal_poop.png" },
+      { name: "フラクタルオヤール", baseCost: 240000000000000000000000000, basePower: 9956290833192544387690000, count: 0, image: "img/fractal_poop.png" },
+      { name: "あなた", baseCost: 28356894589096666666666240000000000000000000000000, basePower: 629972299272927292723456290833192544387690000, count: 0, image: "img/oyar.png" },
+    ];
+
+    // HTML要素取得
+    const poopEl = document.getElementById("poop");
+    const shopEl = document.getElementById("shop");
+    const upgradesEl = document.getElementById("upgrades");
+    const clickUpgradesEl = document.getElementById("clickUpgrades");
+    const poopImage = document.getElementById("poopImage");
+    const clickSE = document.getElementById("clickSE");
+    const feverSE = document.getElementById("feverSE");
+    const rebirthCountEl = document.getElementById("rebirthCount");
+    const rebirthBonusEl = document.getElementById("rebirthBonus");
+    const rebirthBtn = document.getElementById("rebirthBtn");
+
+    // 数字を単位付きに変換する関数（例：1,500 → 1.5K）
+    function formatNumber(n) {
+      if (n < 100) return n.toFixed(0);
+      const tier = Math.floor(Math.log10(n) / 2);
+      if (tier === 0) return n.toFixed(0);
+      const unit = units[tier] || ("e" + (tier*2));
+      const scale = Math.pow(10, tier * 2);
+      const scaled = n / scale;
+      return scaled.toFixed(2) + unit;
+    }
+
+    // Poop画像クリック時処理
+    poopImage.onclick = () => {
+      if (!feverMode && Math.random() < 0.0016) {
+        activateFever();
+      }
+      poop += clickPower * milkData[milkLevel].multiplier * rebirthMultiplier * (feverMode ? 7 : 1);
+      clickSE.currentTime = 0;
+      clickSE.play();
+      updateDisplay();
+    };
+
+    // フィーバーモード開始
+    function activateFever() {
+      feverMode = true;
+      feverSE.play();
+      document.body.classList.add("fever");
+      clearTimeout(feverTimeout);
+      feverTimeout = setTimeout(() => {
+        feverMode = false;
+        document.body.classList.remove("fever");
+      }, 5 * 60 * 1000); // 5分間
+    }
+
+    // 施設購入処理
+    function buyFacility(index) {
+      const f = facilities[index];
+      const cost = Math.floor(f.baseCost * Math.pow(1.15, f.count));
+      if (poop >= cost) {
+        poop -= cost;
+        f.count++;
+        updateDisplay();
+      }
+    }
+
+    // ミルク購入処理
+    function buyMilk(level) {
+      const data = milkData[level];
+      if (milkLevel === level - 1 && poop >= data.cost) {
+        poop -= data.cost;
+        milkLevel = level;
+        updateDisplay();
+      }
+    }
+
+    // クリックアップグレード購入
+    function buyClickUpgrade() {
+      const u = clickUpgrades[clickUpgradeLevel];
+      if (u && poop >= u.cost) {
+        poop -= u.cost;
+        clickPower = u.power * rebirthMultiplier;
+        clickUpgradeLevel++;
+        updateDisplay();
+      }
+    }
+
+    // 転生処理
+    function rebirth() {
+      const requiredPoop = 1e12;
+      if (poop < requiredPoop) {
+        alert(`転生するには少なくとも${formatNumber(requiredPoop)} オヤール必要です。`);
+        return;
+      }
+      if (!confirm("本当に転生しますか？\n転生するとオヤールと施設、アップグレードはリセットされますが、永久ボーナスが付きます。")) {
+        return;
+      }
+      rebirthCount++;
+      rebirthMultiplier = 1 + rebirthCount * 0.3;
+      poop = 0;
+      milkLevel = 0;
+      clickPower = 1 * rebirthMultiplier;
+      clickUpgradeLevel = 0;
+      facilities.forEach(f => f.count = 0);
+      updateDisplay();
+      alert(`転生完了！ボーナス倍率が${rebirthMultiplier.toFixed(2)}倍になりました。`);
+    }
+
+    // リセット処理
+    function resetGame() {
+      if (!confirm("ゲームをリセットしますか？\n進行状況は失われます。")) return;
+      poop = 9999999999999999999999999999999999999999999999999999999999999999999999999999999999999;
+      clickPower = 999999999999999999999999999999999999999999999999999999999999999999999999999999;
+      milkLevel = 0;
+      clickUpgradeLevel = 0;
+      facilities.forEach(f => f.count = 0);
+      rebirthCount = 0;
+      rebirthMultiplier = 1;
+      feverMode = false;
+      document.body.classList.remove("fever");
+      clearTimeout(feverTimeout);
+      updateDisplay();
+    }
+
+    // 画面更新
+    function updateDisplay() {
+      poopEl.textContent = formatNumber(poop);
+      document.body.style.backgroundColor = milkData[milkLevel].color;
+      poopImage.src = milkData[milkLevel].image;
+
+      // 施設リスト更新
+      shopEl.innerHTML = "";
+      facilities.forEach((f, i) => {
+        const cost = Math.floor(f.baseCost * Math.pow(1.15, f.count));
+        const div = document.createElement("div");
+        div.className = "shop-item";
+        div.innerHTML = `
+          <img src="${f.image}" alt="${f.name}" />
+          <div>
+            <strong>${f.name}</strong> （${f.count}台）<br />
+            生産: ${formatNumber(f.basePower * f.count * rebirthMultiplier)} / 秒<br />
+            価格: ${formatNumber(cost)} Poop
+          </div>
+          <button onclick="buyFacility(${i})" ${poop < cost ? "disabled" : ""}>購入</button>
+        `;
+        shopEl.appendChild(div);
+      });
+
+      // ミルクアップグレード更新（4つだけ表示）
+      upgradesEl.innerHTML = "";
+      for (let i = 1; i <= 8; i++) {
+        const data = milkData[i];
+        const bought = milkLevel >= i;
+        const div = document.createElement("div");
+        div.className = "upgrade-item";
+        div.innerHTML = `
+          <img src="${data.image}" alt="${data.name}" />
+          <div>
+            <strong>${data.name}</strong><br />
+            倍率: x${data.multiplier}<br />
+            価格: ${formatNumber(data.cost)} オヤール
+          </div>
+          <button onclick="buyMilk(${i})" ${bought || poop < data.cost ? "disabled" : ""}>購入</button>
+        `;
+        upgradesEl.appendChild(div);
+      }
+
+      // クリックアップグレード更新
+      clickUpgradesEl.innerHTML = "";
+      const cu = clickUpgrades[clickUpgradeLevel];
+      if (cu) {
+        const div = document.createElement("div");
+        div.className = "click-upgrade-item";
+        div.innerHTML = `
+          <img src="${cu.image}" alt="クリックアップグレード" />
+          <div>
+            <strong>クリックアップグレード Lv.${clickUpgradeLevel + 1}</strong><br />
+            クリック力: x${cu.power}<br />
+            価格: ${formatNumber(cu.cost)} Poop
+          </div>
+          <button onclick="buyClickUpgrade()" ${poop < cu.cost ? "disabled" : ""}>購入</button>
+        `;
+        clickUpgradesEl.appendChild(div);
+      } else {
+        clickUpgradesEl.innerHTML = "<p>すべてのクリックアップグレードを購入済みです。</p>";
+      }
+
+      // 転生情報更新
+      rebirthCountEl.textContent = rebirthCount;
+      rebirthBonusEl.textContent = `x${rebirthMultiplier.toFixed(2)}`;
+
+      // 転生ボタンの有効/無効制御
+      rebirthBtn.disabled = poop < 1e12;
+    }
+
+    // 自動生産処理（1秒ごと）
+    setInterval(() => {
+      let production = 0;
+      facilities.forEach(f => {
+        production += f.basePower * f.count;
+      });
+      production *= rebirthMultiplier;
+      if (feverMode) production *= 7;
+      poop += production;
+      updateDisplay();
+    }, 1000);
+
+    // 初期表示更新
+    updateDisplay();
+      // ゲーム状態保存用の関数
+      function saveGame() {
+            const saveData = {
+                  poop,
+                  clickPower,
+                  milkLevel,
+                  clickUpgradeLevel,
+                  feverMode,
+                  rebirthCount,
+                  rebirthMultiplier,
+                  facilities: facilities.map(f => f.count),
+                  lastSaveTime: Date.now()
+            };
+            localStorage.setItem('poopClickerSave', JSON.stringify(saveData));
+      }
+
+      // ゲーム状態読み込み用の関数
+      function loadGame() {
+            const saveDataStr = localStorage.getItem('poopClickerSave');
+            if (!saveDataStr) return;
+
+            try {
+                  const saveData = JSON.parse(saveDataStr);
+
+                  // オフライン時間計算（秒）
+                  const now = Date.now();
+                  const offlineMs = now - (saveData.lastSaveTime || now);
+                  const offlineSeconds = offlineMs / 1000;
+
+                  // 状態復元
+                  poop = saveData.poop || 0;
+                  clickPower = saveData.clickPower || 1;
+                  milkLevel = saveData.milkLevel || 0;
+                  clickUpgradeLevel = saveData.clickUpgradeLevel || 0;
+                  feverMode = false; // フィーバーはリセット
+                  rebirthCount = saveData.rebirthCount || 0;
+                  rebirthMultiplier = saveData.rebirthMultiplier || 1;
+                  if (saveData.facilities && Array.isArray(saveData.facilities)) {
+                        facilities.forEach((f, i) => {
+                              f.count = saveData.facilities[i] || 0;
+                        });
+                  }
+
+                  // オフライン稼ぎ計算（秒×秒間生産量×倍率）
+                  const offlineProductionPerSec = facilities.reduce((acc, f) => {
+                        return acc + f.basePower * f.count * rebirthMultiplier;
+                  }, 0);
+
+                  poop += offlineProductionPerSec * offlineSeconds;
+
+                  updateDisplay();
+            } catch (e) {
+                  console.error("セーブデータの読み込みに失敗しました:", e);
+            }
+      }
+
+      // 一定時間ごとに自動セーブ（例: 10秒に1回）
+      setInterval(() => {
+            saveGame();
+      }, 10000);
+
+      // ウィンドウを閉じる直前にも保存
+      window.addEventListener('beforeunload', () => {
+            saveGame();
+      });
+
+      // ページ読み込み時にロード処理
+      window.addEventListener('load', () => {
+            loadGame();
+      });
+  </script>
+</body>
+</html>
